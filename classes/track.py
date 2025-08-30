@@ -29,12 +29,9 @@ class Track:
             if rel:
                 subpath = rel
         if subpath is None:
-            if self.structure == "artist_album":
-                artist = source_path.parents[1].name if len(source_path.parents) >= 2 else source_path.parent.name
-                album = source_path.parent.name
-                subpath = Path(artist) / album / source_path.name
-            else:
-                subpath = Path(source_path.name)
+            artist = source_path.parents[1].name if len(source_path.parents) >= 2 else source_path.parent.name
+            album = source_path.parent.name
+            subpath = Path(artist) / album / source_path.name
 
         target_dir = self.dest_dir / subpath.parent if hasattr(subpath, "parent") else self.dest_dir
         target_path = self.deduplicate_target(target_dir, self.safe_name(subpath), source_path)

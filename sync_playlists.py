@@ -17,7 +17,7 @@ def main():
     ap.add_argument("--library-dir", default=os.environ.get("LIBRARY_DIR"), help="Path to your Music library root (e.g., ~/Music/Music/Media/Music) to mirror subfolders under dest.")
     ap.add_argument("--structure", choices=["artist_album", "mirror"], default="artist_album",
                     help="How to arrange files under dest. 'mirror' tries to mirror paths under --library-dir.")
-    ap.add_argument("--mode", choices=["link", "copy"], default="link", help="Create (hard)links (default) or copy files.")
+    ap.add_argument("--mode", choices=["link", "copy"], default="link", help="Create (hard) links (default) or copy files.")
     ap.add_argument("--prune", action="store_true", default=True, help="Remove files in dest that are no longer in the provided playlists (only files previously created by this script).")
     args = ap.parse_args()
 

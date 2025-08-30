@@ -14,9 +14,9 @@ class Playlist:
         self.dest_dir = dest_dir
         self.structure = structure
         self.mode = mode
+        self.manifest = manifest
         self.track_count = 0
         self.tracks: dict[str, str] = {}
-        self.manifest = manifest
         self.copy()
 
     def get_tracks(self):
