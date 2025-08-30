@@ -1,14 +1,16 @@
 from pathlib import Path
 import hashlib
+from classes.manifest import Manifest
 
 class Track:
-    def __init__(self, raw_path: Path, playlist_dir: Path, library_dir: Path, dest_dir: Path, structure: str):
+    def __init__(self, raw_path: Path, playlist_dir: Path, library_dir: Path, dest_dir: Path, structure: str, manifest: Manifest):
         self.raw_path = raw_path
-        self.source_path = self.normalize_track_path(raw_path, playlist_dir) or self.normalize_track_path(raw_path, library_dir)
-        self.target_path = self.create_target_track_path(self.source_path) if self.source_path and self.source_path.exists() else None
         self.library_dir = library_dir
         self.dest_dir = dest_dir
         self.structure = structure
+        self.manifest = manifest
+        self.source_path = self.normalize_track_path(raw_path, playlist_dir) or self.normalize_track_path(raw_path, library_dir)
+        self.target_path = self.create_target_track_path(self.source_path) if self.source_path and self.source_path.exists() else None
 
     def get_source_path(self):
         return self.source_path
@@ -17,18 +19,17 @@ class Track:
         return self.target_path
 
     def create_target_track_path(self, source_path: Path):
+        reverse_lookup = self.manifest.get_manifest_reverse_lookup()
+        if str(source_path) in reverse_lookup:
+            return Path(reverse_lookup[str(source_path)])
+
         subpath = None
         if self.structure == "mirror" and self.library_dir:
             rel = self.create_relative_path_under_library(source_path)
             if rel:
                 subpath = rel
         if subpath is None:
-            if self.structure == "flat":
-                subpath = Path(source_path.name)
-            elif self.structure == "artist":
-                artist = source_path.parent.name
-                subpath = Path(artist) / source_path.name
-            elif self.structure == "artist_album":
+            if self.structure == "artist_album":
                 artist = source_path.parents[1].name if len(source_path.parents) >= 2 else source_path.parent.name
                 album = source_path.parent.name
                 subpath = Path(artist) / album / source_path.name
@@ -41,13 +42,10 @@ class Track:
         return target_path
 
 
-    def normalize_track_path(self, path: Path, basepath_hint: Path | None):
+    def normalize_track_path(self, path: Path, basepath_hint: Path):
         track_path = path
         if not track_path.is_absolute():
-            if basepath_hint:
-                track_path = (basepath_hint / track_path).expanduser().resolve()
-            else:
-                track_path = track_path.expanduser().resolve()
+            track_path = (basepath_hint / track_path).expanduser().resolve()
         else:
             track_path = track_path.expanduser()
         try:
@@ -62,6 +60,26 @@ class Track:
         candidate = target_dir / suggested_name
         if not candidate.exists():
             return candidate
+        
+        # Check if the existing file is actually the same source file
+        if candidate.is_symlink():
+            try:
+                existing_target = candidate.resolve()
+                if existing_target == source_path:
+                    # Same source file, reuse existing path
+                    return candidate
+            except Exception:
+                pass
+        else:
+            # For copied files, compare file sizes as a basic check
+            try:
+                if candidate.stat().st_size == source_path.stat().st_size:
+                    # Same file size, likely the same file
+                    return candidate
+            except Exception:
+                pass
+        
+        # Different source file, create deduplicated name
         stem = candidate.stem
         suffix = "".join(candidate.suffixes) or ""
         h = hashlib.sha1(str(source_path).encode("utf-8")).hexdigest()[:8]

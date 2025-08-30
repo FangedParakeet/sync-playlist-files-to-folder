@@ -1,7 +1,2 @@
+python-dotenv
 pathlib
-argparse
-hashlib
-json
-os
-shutil
-sys

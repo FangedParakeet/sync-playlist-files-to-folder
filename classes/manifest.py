@@ -11,9 +11,11 @@ class Manifest:
         self.previous_data: dict[str, str] = self.load()
         self.current_data: dict[str, str] = {}
 
+    def get_manifest_reverse_lookup(self):
+        return {v: k for k, v in self.previous_data.items()}
+
     def add_tracks(self, tracks: dict[str, str]):
         self.current_data.update(tracks)
-        self.save()
 
     def load(self):
         file_path = self.dest
@@ -28,8 +30,11 @@ class Manifest:
             return {}
 
     def save(self):
-        file_content = {"managed": self.current_data}
-        self.dest.write_text(json.dumps(file_content, indent=4), encoding="utf-8")
+        logger.info(f"Saving manifest...")
+        data = {"managed": self.current_data}
+        tmp = self.dest_dir / (self.FILE_NAME + ".tmp")
+        tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        tmp.replace(self.dest)  # atomic on the same filesystem
 
     def prune(self):
         logger.info(f"Deleting removed tracks from previous manifest...")

@@ -20,8 +20,10 @@ class SyncService:
         if self.prune:
             self.manifest.prune()
 
+        self.manifest.save()
+
     def get_playlist_files(self):
         playlist_files = []
         for playlist_filename in self.playlist_dir.glob("*.m3u"):
-            playlist_files.append(Playlist(playlist_filename, self.library_dir, self.dest, self.structure, self.mode))
+            playlist_files.append(Playlist(playlist_filename, self.library_dir, self.dest, self.structure, self.mode, self.manifest))
         return playlist_files
