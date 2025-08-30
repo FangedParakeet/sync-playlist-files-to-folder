@@ -4,6 +4,7 @@ from classes.manifest import Manifest
 from utils.logger import logger
 import shutil
 import os
+import errno
 
 class Playlist:
     def __init__(self, path: Path, library_dir: Path, dest_dir: Path, structure: str, mode: str, manifest: Manifest):
@@ -70,7 +71,11 @@ class Playlist:
                         return
                     destination.unlink()
                 else:
-                    if destination.stat().st_size == source.stat().st_size:
+                    # For hard links and regular files, compare inodes first
+                    if destination.stat().st_ino == source.stat().st_ino:
+                        return  # Same file, no need to recreate
+                    # Fall back to file size comparison
+                    elif destination.stat().st_size == source.stat().st_size:
                         return
                     destination.unlink()
             except Exception:
@@ -80,9 +85,14 @@ class Playlist:
             shutil.copy2(source, destination)
         else:
             try:
-                os.symlink(source, destination)
-            except FileExistsError:
-                pass
+                os.link(source, destination)
+            except OSError as e:
+                if e.errno == errno.EXDEV:
+                    logger.warning(f"Cross-volume hardlink not possible for {source} -> {destination}.")
+                    # logger.warning("Falling back to copy.")
+                    # shutil.copy2(source, destination)
+                else:
+                    raise
 
     def write_playlist_file(self):
         file_path = self.dest_dir / f"{self.key}.m3u8"

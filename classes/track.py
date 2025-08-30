@@ -41,7 +41,6 @@ class Track:
 
         return target_path
 
-
     def normalize_track_path(self, path: Path, basepath_hint: Path):
         track_path = path
         if not track_path.is_absolute():
@@ -62,22 +61,23 @@ class Track:
             return candidate
         
         # Check if the existing file is actually the same source file
-        if candidate.is_symlink():
-            try:
+        try:
+            if candidate.is_symlink():
+                # For symlinks, check if they point to the same source
                 existing_target = candidate.resolve()
                 if existing_target == source_path:
-                    # Same source file, reuse existing path
                     return candidate
-            except Exception:
-                pass
-        else:
-            # For copied files, compare file sizes as a basic check
-            try:
-                if candidate.stat().st_size == source_path.stat().st_size:
+            else:
+                # For hard links and regular files, compare inodes
+                if candidate.stat().st_ino == source_path.stat().st_ino:
+                    # Same inode = same file
+                    return candidate
+                # Also check file size as a fallback
+                elif candidate.stat().st_size == source_path.stat().st_size:
                     # Same file size, likely the same file
                     return candidate
-            except Exception:
-                pass
+        except Exception:
+            pass
         
         # Different source file, create deduplicated name
         stem = candidate.stem
@@ -85,7 +85,6 @@ class Track:
         h = hashlib.sha1(str(source_path).encode("utf-8")).hexdigest()[:8]
         new_name = f"{stem}__{h}{suffix}"
         return target_dir / new_name
-
 
     def create_relative_path_under_library(self, src_abs: Path):
         if not self.library_dir:
